@@ -8,6 +8,7 @@ import useDesignV2Store from '../../../store/designV2Store';
 import { SAMPLES } from '../../../samples';
 import * as counter from '../../../samples/counterLogic';
 import { NAME as BLANK_SAMPLE_NAME } from '../../../samples/blank';
+import { STEP_ID } from '../../../types/designV2.types';
 
 /*
  * Monaco is replaced by a plain div: the view under test is the chrome around
@@ -98,6 +99,48 @@ describe('ModelDataView', () => {
     render(<ModelDataView />);
     expect(pane(MODEL_DATA.data.paneLabel).getByText(MODEL_DATA.error)).toBeInTheDocument();
     expect(pane(MODEL_DATA.model.paneLabel).getByText(MODEL_DATA.model.ok)).toBeInTheDocument();
+  });
+
+  it.each([
+    'Je: Unknown property: missingTestVariable File text/grammar.tem.md line -1 column -1',
+    'Parse error File grammar.tem.md line 1 column 2',
+    'Error: Unknown variable {{ownerr}}',
+  ])('does not blame valid data for a Text error: %s', (error) => {
+    useAppStore.setState({ error });
+    render(<ModelDataView />);
+
+    expect(pane(MODEL_DATA.model.paneLabel).getByText(MODEL_DATA.model.ok)).toBeInTheDocument();
+    const data = pane(MODEL_DATA.data.paneLabel);
+    expect(data.queryByText(MODEL_DATA.error)).not.toBeInTheDocument();
+    // The failed template render may stop instance validation: do not claim it passed.
+    expect(data.queryByText(MODEL_DATA.data.ok)).not.toBeInTheDocument();
+    expect(data.getByText('○ not checked — fix the Text step first')).toBeInTheDocument();
+
+    const rail = within(screen.getByRole('complementary'));
+    expect(rail.getByText(MODEL_DATA.help.checks.dataValid).closest('li')).toHaveClass('nd-check-todo');
+    expect(rail.getByText(HELP_RAIL.count(1, 2))).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Fix the error on the Text step');
+  });
+
+  it('opens Text from the template error notice without changing the editors', () => {
+    useDesignV2Store.setState({ view: STEP_ID.modelData, previewOpen: true });
+    useAppStore.setState({ error: 'Unknown property: missingTestVariable File text/grammar.tem.md' });
+    render(<ModelDataView />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open Text' }));
+
+    expect(useDesignV2Store.getState().view).toBe(STEP_ID.text);
+    expect(useDesignV2Store.getState().previewOpen).toBe(false);
+    expect(useDesignV2Store.getState().textErrorToReveal).toBe('Unknown property: missingTestVariable File text/grammar.tem.md');
+    expect(useAppStore.getState().editorAgreementData).toBe(counterData);
+    expect(useAppStore.getState().error).toContain('missingTestVariable');
+  });
+
+  it('still flags instance validation errors as data errors', () => {
+    useAppStore.setState({ error: 'Unknown property: extraField in data.json' });
+    render(<ModelDataView />);
+    expect(pane(MODEL_DATA.data.paneLabel).getByText(MODEL_DATA.error)).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
   it("routes the template engine's @template error to the model pane", () => {

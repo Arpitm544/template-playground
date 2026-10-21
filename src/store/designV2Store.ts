@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
-import { STEPS, FIRST_STEP, type DesignV2View } from "../types/designV2.types";
+import { STEPS, FIRST_STEP, STEP_ID, type DesignV2View } from "../types/designV2.types";
 
 /** The two panes of the Data step's split screen. */
 export type ModelDataPane = "model" | "data";
@@ -24,6 +24,9 @@ export interface DesignV2State {
   modelDataPanes: ModelDataPanes;
   /** Whether the right-hand help rail is shown next to the editor steps. */
   helpRailOpen: boolean;
+  /** One-shot navigation request, consumed when the Text editor mounts. */
+  textErrorToReveal: string | null;
+  openTextError: (error: string) => void;
 
   setView: (view: DesignV2View) => void;
   /** Leave the welcome hero and open the first step. */
@@ -57,17 +60,19 @@ const useDesignV2Store = create<DesignV2State>()(
       modelDataPanes: { model: true, data: true },
       helpRailOpen: true,
       selectedRunId: null,
+      textErrorToReveal: null,
+      openTextError: (error) => set({ view: STEP_ID.text, previewOpen: false, textErrorToReveal: error }, false, "designV2/openTextError"),
 
-      setView: (view) => set({ view }, false, "designV2/setView"),
-      start: () => set({ view: FIRST_STEP }, false, "designV2/start"),
+      setView: (view) => set({ view, textErrorToReveal: null }, false, "designV2/setView"),
+      start: () => set({ view: FIRST_STEP, textErrorToReveal: null }, false, "designV2/start"),
       goBack: () => {
         const index = stepIndexOf(get().view);
-        if (index > 0) set({ view: STEPS[index - 1].id }, false, "designV2/goBack");
+        if (index > 0) set({ view: STEPS[index - 1].id, textErrorToReveal: null }, false, "designV2/goBack");
       },
       goNext: () => {
         const index = stepIndexOf(get().view);
         if (index >= 0 && index < STEPS.length - 1) {
-          set({ view: STEPS[index + 1].id }, false, "designV2/goNext");
+          set({ view: STEPS[index + 1].id, textErrorToReveal: null }, false, "designV2/goNext");
         }
       },
       setPreviewOpen: (open) => set({ previewOpen: open }, false, "designV2/setPreviewOpen"),

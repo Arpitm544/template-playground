@@ -313,6 +313,7 @@ export const MODEL_DATA = {
     ok: "✓ valid against the model",
     /** Shown instead of the ✓ while the model itself does not parse. */
     notChecked: "○ not checked — fix the model first",
+    notCheckedText: "○ not checked — fix the Text step first",
     formatFailed: "Fix JSON syntax errors before formatting.",
     resetDone: (sample: string) => `data.json reset to the ${sample} sample`,
     resetTitle: (sample: string) => `Restore the ${sample} sample data`,
@@ -320,6 +321,10 @@ export const MODEL_DATA = {
   },
   /** Status of a pane whose file the app store rejected; the message itself is in the footer. */
   error: "✕ error",
+  textError: {
+    title: "Fix the error on the Text step",
+    action: "Open Text",
+  },
   /** Content of the help rail for this step. */
   help: {
     checklistTitle: "THIS STEP NEEDS",
@@ -328,6 +333,7 @@ export const MODEL_DATA = {
       dataValid: "data matches model",
       /** Tag on the data check while the model does not parse. */
       needsModel: "fix model",
+      needsText: "fix text",
     },
     why: {
       note:

@@ -9,6 +9,17 @@ import {
 import HelpRail, { HelpRailReopen, type ChecklistItem } from "./HelpRail";
 import PreviewToggle from "./PreviewToggle";
 import { TEXT } from "./constants";
+import useDesignV2Store from "../../store/designV2Store";
+import { revealTextError } from "./textErrorNavigation";
+import type { editor } from "monaco-editor";
+
+/** Wait for Monaco to mount rather than trying to focus the unmounted Text step. */
+const revealPendingError = (editorInstance: editor.IStandaloneCodeEditor) => {
+  const pending = useDesignV2Store.getState().textErrorToReveal;
+  if (!pending) return;
+  useDesignV2Store.setState({ textErrorToReveal: null });
+  if (useAppStore.getState().error === pending) revealTextError(editorInstance, pending);
+};
 
 /**
  * Formatting buttons of the text editor. They call the same commands the
@@ -82,7 +93,7 @@ export const TextView = () => {
               </Button>
             </div>
             <div className="nd-editor-card-body nd-editor-card-body-editor">
-              <TemplateMarkdown />
+              <TemplateMarkdown onEditorReady={revealPendingError} />
             </div>
             <div className="nd-editor-card-foot" role="status">
               {error ? (

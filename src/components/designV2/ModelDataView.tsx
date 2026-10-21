@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Button, Tooltip, message } from "antd";
+import { Alert, Button, Tooltip, message } from "antd";
 import { CloseOutlined } from "@ant-design/icons";
 import useAppStore from "../../store/store";
 import useDesignV2Store, { type ModelDataPane } from "../../store/designV2Store";
@@ -80,12 +80,15 @@ const EditorPane = ({
  * Display-only: the message itself comes from the store's validators and the
  * Accord template engine, this just decides where to show it. CTO syntax
  * errors ("Invalid CTO model", legacy "c:" prefix) and the engine's
- * "@template decorator" errors are model problems; everything else (invalid
- * JSON, an instance that does not match the model) is a data problem.
+ * "@template decorator" errors are model problems. Errors naming the text
+ * template (or an unknown variable) belong to Text, not to either data pane.
+ * Remaining errors retain the existing data/instance error treatment.
  */
-const errorPane = (error: string | undefined): "model" | "data" | null => {
+const errorPane = (error: string | undefined): "model" | "data" | "text" | null => {
   if (!error) return null;
-  return /^c:|Invalid CTO model|@template decorator/i.test(error) ? "model" : "data";
+  if (/^c:|Invalid CTO model|@template decorator/i.test(error)) return "model";
+  if (/\bgrammar\.tem\.md\b|\bFile\s+(?:text[\\/])?text\.md\b|\bUnknown variable\b/i.test(error)) return "text";
+  return "data";
 };
 
 /**
@@ -115,12 +118,17 @@ export const ModelDataView = () => {
   const setData = useAppStore((s) => s.setData);
   const panes = useDesignV2Store((s) => s.modelDataPanes);
   const setPaneOpen = useDesignV2Store((s) => s.setPaneOpen);
+  const openTextError = useDesignV2Store((s) => s.openTextError);
   const openCount = Number(panes.model) + Number(panes.data);
   const closedPanes = (["model", "data"] as const).filter((pane) => !panes[pane]);
 
   const failing = errorPane(error);
   const modelError = failing === "model" ? error : undefined;
   const dataError = failing === "data" ? error : undefined;
+  const textError = failing === "text";
+  const dataPending = modelError
+    ? MODEL_DATA.data.notChecked
+    : textError ? MODEL_DATA.data.notCheckedText : undefined;
 
   const formatModel = () => {
     try {
@@ -168,6 +176,8 @@ export const ModelDataView = () => {
     // Without a parsing model the data cannot be checked against anything.
     modelError
       ? { label: checks.dataValid, tone: "todo", tag: checks.needsModel }
+      : textError
+      ? { label: checks.dataValid, tone: "todo", tag: checks.needsText }
       : { label: checks.dataValid, tone: dataError ? "error" : "done" },
   ];
 
@@ -188,6 +198,17 @@ export const ModelDataView = () => {
           <PreviewToggle />
           <HelpRailReopen />
         </div>
+
+        {textError && (
+          <Alert
+            style={{ width: "100%", padding: "12px 16px", flexShrink: 0 }}
+            type="warning"
+            showIcon
+            message={MODEL_DATA.textError.title}
+            description={<span style={{ overflowWrap: "anywhere" }}>{error}</span>}
+            action={<Button style={{ marginInlineStart: 16 }} onClick={() => error && openTextError(error)}>{MODEL_DATA.textError.action}</Button>}
+          />
+        )}
 
         <div className={`nd-split ${openCount === 1 ? "nd-split-single" : ""}`}>
           {panes.model && (
@@ -225,7 +246,7 @@ export const ModelDataView = () => {
             badgeClass="nd-badge-blue"
             error={dataError}
             okText={MODEL_DATA.data.ok}
-            pendingText={modelError ? MODEL_DATA.data.notChecked : undefined}
+            pendingText={dataPending}
             onClose={() => setPaneOpen("data", false)}
             canClose={openCount > 1}
             actions={

@@ -6,7 +6,7 @@ import { updateEditorActivity } from "../../ai-assistant/activityTracker";
 import { useMarkdownEditorContext } from "../../contexts/MarkdownEditorContext";
 import { createMarkdownCommands } from "./markdownCommands";
 
-function TemplateMarkdown() {
+function TemplateMarkdown({ onEditorReady }: { onEditorReady?: (editor: MonacoEditorNS.IStandaloneCodeEditor) => void } = {}) {
   const editorValue = useAppStore((state) => state.editorValue);
   const setEditorValue = useAppStore((state) => state.setEditorValue);
   const setTemplateMarkdown = useAppStore((state) => state.setTemplateMarkdown);
@@ -33,6 +33,7 @@ function TemplateMarkdown() {
     editorRef.current = editor;
     const commands = createMarkdownCommands(editorRef);
     setCommands(commands);
+    onEditorReady?.(editor);
   };
 
   return (
